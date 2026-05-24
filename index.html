@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Instant Poll – San Paolo Bel Sito</title>
+  <style>
+    :root{
+      --bg:#0b0f14;--panel:#121922;--panel-2:#17202b;--text:#ecf2f8;--muted:#9fb0c2;--border:#263445;
+      --gold:#f5c451;--silver:#c7d0da;--bronze:#d7975f;--green:#77c255;--red:#d33838;--orange:#f0b429;--ok:#77c255;--warn:#f0b429;--bad:#ff6b6b;
+      --shadow:0 10px 30px rgba(0,0,0,.25);--radius:16px;
+    }
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,#091017 0%,#0d131c 100%);color:var(--text);}
+    .wrap{max-width:1280px;margin:0 auto;padding:18px;}
+    .topbar{display:flex;justify-content:space-between;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:14px;}
+    h1{margin:0;font-size:28px;line-height:1.1;} .sub{color:var(--muted);font-size:13px;margin-top:6px;}
+    .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    button{border:1px solid var(--border);background:var(--panel);color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer;box-shadow:var(--shadow);font-weight:600;}
+    button:hover{background:var(--panel-2)}
+    .pill{padding:8px 12px;border-radius:999px;background:var(--panel);border:1px solid var(--border);color:var(--muted);font-size:12px;font-weight:700;}
+    .grid{display:grid;gap:14px;} .g-main{grid-template-columns:1.25fr .95fr;}
+    .panel{background:rgba(18,25,34,.92);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;}
+    .panel h2{margin:0 0 12px 0;font-size:16px;color:#fff;}
+    .leaders{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+    .leader{border-radius:18px;padding:14px;border:1px solid var(--border);min-height:165px;display:flex;flex-direction:column;justify-content:space-between;}
+    .leader.first{background:linear-gradient(180deg,rgba(245,196,81,.18),rgba(245,196,81,.05)); border-color:#85631b;}
+    .leader.second{background:linear-gradient(180deg,rgba(199,208,218,.18),rgba(199,208,218,.05)); border-color:#5a6774;}
+    .leader.third{background:linear-gradient(180deg,rgba(215,151,95,.18),rgba(215,151,95,.05)); border-color:#85522d;}
+    .rank{font-size:13px;font-weight:800;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;}
+    .leader-name{font-size:28px;font-weight:900;line-height:1;margin:8px 0 2px;}
+    .leader-votes{font-size:42px;font-weight:900;line-height:1;margin:10px 0;}
+    .leader-meta{display:flex;justify-content:space-between;gap:10px;color:var(--muted);font-size:13px;}
+    .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:14px;}
+    .kpi{background:var(--panel-2);border:1px solid var(--border);border-radius:14px;padding:12px;}
+    .kpi .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-weight:700;}
+    .kpi .value{margin-top:4px;font-size:28px;font-weight:900;line-height:1.05;}
+    .progress-wrap{margin-top:14px;background:var(--panel-2);border:1px solid var(--border);border-radius:16px;padding:14px;}
+    .progress-row{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:10px;flex-wrap:wrap;}
+    .progress-big{font-size:32px;font-weight:900;} .progress-small{color:var(--muted);font-size:13px;}
+    .bar{width:100%;height:16px;border-radius:999px;overflow:hidden;background:#0d141c;border:1px solid var(--border);}
+    .bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--orange),#ffd54c);width:0%;}
+    .mini{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;}
+    .mini-card{background:var(--panel-2);border:1px solid var(--border);border-radius:14px;padding:12px;}
+    .mini-card h3{margin:0 0 8px 0;font-size:14px;} .mini-card .big{font-size:24px;font-weight:900;}
+    table{width:100%;border-collapse:collapse;overflow:hidden;border-radius:14px;}
+    th,td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:center;font-size:14px;} th{background:#0e141d;color:#fff;position:sticky;top:0;}
+    td:first-child,th:first-child{text-align:left} tr:last-child td{border-bottom:none}
+    .cafe{color:#b7ef8a;font-weight:800}.riccio{color:#ffb2b2;font-weight:800}.barone{color:#ffd889;font-weight:800}
+    .bars .row{display:grid;grid-template-columns:130px 70px 1fr 72px;gap:10px;align-items:center;margin:11px 0;}
+    .bars .label{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .bars .count{color:var(--muted);font-weight:700;text-align:right;}
+    .bars .track{height:18px;background:#0d141c;border:1px solid var(--border);border-radius:999px;overflow:hidden;}
+    .bars .fill{height:100%;width:0%;}
+    .fill.cafarelli{background:linear-gradient(90deg,#5ea83f,#8ce25c)} .fill.riccio{background:linear-gradient(90deg,#b81d1d,#f74b4b)} .fill.barone{background:linear-gradient(90deg,#c07c0d,#ffca3a)}
+    .source-box{margin-top:14px;font-size:12px;color:var(--muted);line-height:1.5;background:#0d141c;border:1px dashed var(--border);border-radius:12px;padding:12px;}
+    .source-box code{color:#fff;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;word-break:break-all;}
+    .foot{margin-top:14px;color:var(--muted);font-size:12px;text-align:right;}
+    @media (max-width:1000px){.g-main{grid-template-columns:1fr}}
+    @media (max-width:820px){
+      .leaders,.kpis,.mini{grid-template-columns:1fr}
+      .bars .row{grid-template-columns:1fr 60px;grid-template-areas:"label count" "track track" "pct pct";}
+      .bars .label{grid-area:label}.bars .count{grid-area:count}.bars .track{grid-area:track}.bars .pct{grid-area:pct;text-align:right;color:var(--muted);font-size:12px;font-weight:700}
+      .topbar{align-items:flex-start}.leader-name{font-size:24px}.leader-votes{font-size:36px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <div>
+        <h1>Instant Poll – Comunali San Paolo Bel Sito</h1>
+        <div class="sub">Dashboard live per monitorare lo scrutinio in tempo reale</div>
+      </div>
+      <div class="actions">
+        <div class="pill" id="statusPill">Sorgente: demo locale</div>
+        <div class="pill" id="lastUpdatePill">Ultimo aggiornamento: —</div>
+        <button id="refreshBtn">Aggiorna ora</button>
+      </div>
+    </div>
+
+    <div class="grid g-main">
+      <section class="panel">
+        <h2>Classifica live sindaco</h2>
+        <div class="leaders" id="leaders"></div>
+
+        <div class="kpis">
+          <div class="kpi"><div class="label">Scrutinati</div><div class="value" id="scrutinatiVal">—</div></div>
+          <div class="kpi"><div class="label">Elettori</div><div class="value" id="elettoriVal">—</div></div>
+          <div class="kpi"><div class="label">Mancano</div><div class="value" id="mancanoVal">—</div></div>
+          <div class="kpi"><div class="label">Bianche</div><div class="value" id="biancheVal">—</div></div>
+          <div class="kpi"><div class="label">Nulle</div><div class="value" id="nulleVal">—</div></div>
+          <div class="kpi"><div class="label">Non valide</div><div class="value" id="nonValideVal">—</div></div>
+        </div>
+
+        <div class="progress-wrap">
+          <div class="progress-row">
+            <div><div class="progress-small">Avanzamento scrutinio</div><div class="progress-big" id="progressBig">—</div></div>
+            <div class="progress-small" id="progressSide">—</div>
+          </div>
+          <div class="bar"><span id="progressFill"></span></div>
+        </div>
+
+        <div class="mini" id="sectionCards"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Monitor consiglieri</h2>
+        <div class="bars" id="councillorBars"></div>
+        <div class="source-box">
+          <strong>Come usarla live da remoto</strong><br>
+          1) pubblica due fogli del tuo Google Sheet come CSV<br>
+          2) apri questo file e modifica solo le URL dentro <code>CONFIG.google.summaryUrl</code> e <code>CONFIG.google.preferencesUrl</code><br>
+          3) imposta <code>mode: "google_csv"</code><br>
+          4) su GitHub Pages o hosting statico funziona meglio che in apertura locale<br>5) il pannello si aggiorna da solo ogni 15 secondi
+        </div>
+      </section>
+    </div>
+
+    <div class="grid" style="grid-template-columns:1fr; margin-top:14px;">
+      <section class="panel"><h2>Riepilogo per sezione</h2><table id="sectionsTable"></table></section>
+      <section class="panel"><h2>Riepilogo consiglieri</h2><table id="prefsTable"></table></section>
+    </div>
+
+    <div class="foot">HTML standalone – pronto per browser o hosting statico · modalità consigliata: GitHub Pages</div>
+  </div>
+
+  <script>
+    const CONFIG = {
+      mode: "apps_script",
+      refreshMs: 15000,
+      appsScriptUrl: "https://script.google.com/macros/s/AKfycbxWqLlsT-oF1xNyyyqCrNyGXb_Xs21UYYVbg9PMfUeBSjKTAMt8TFgGP605YVdFj9Zq/exec",
+      google: { summaryUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0RWRLEHs6SLo3ndcOebYhV_1zdrB6EZfGh6mkv5S8nVVZcLH5kwy1kMy6gi1PepgbriZQNB73fcqA/pub?gid=340663944&single=true&output=csv", preferencesUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0RWRLEHs6SLo3ndcOebYhV_1zdrB6EZfGh6mkv5S8nVVZcLH5kwy1kMy6gi1PepgbriZQNB73fcqA/pub?gid=2001477784&single=true&output=csv" },
+      embedded: {
+        summary: [
+          { sezione: "1", elettori: 884, cafarelli: 1, riccio: 123, barone: 542, bianche: 8, nulle: 1 },
+          { sezione: "2", elettori: 893, cafarelli: 15, riccio: 1, barone: 23, bianche: 0, nulle: 0 },
+          { sezione: "3", elettori: 981, cafarelli: 23, riccio: 151, barone: 264, bianche: 2, nulle: 0 }
+        ],
+        preferences: [
+          { candidato: "Benedetto Cava", sez1: 1, sez2: 0, sez3: 1 },
+          { candidato: "Luciano Franzese", sez1: 0, sez2: 2, sez3: 3 },
+          { candidato: "Gennaro Panico", sez1: 0, sez2: 1, sez3: 2 },
+          { candidato: "Massimo Monda", sez1: 1, sez2: 0, sez3: 0 },
+          { candidato: "Dottore Napolitano", sez1: 1, sez2: 0, sez3: 0 },
+          { candidato: "Antonio Scala", sez1: 0, sez2: 2, sez3: 3 },
+          { candidato: "Rosa Galdi", sez1: 0, sez2: 2, sez3: 0 },
+          { candidato: "Anna Settembre", sez1: 0, sez2: 1, sez3: 0 },
+          { candidato: "Francesco Iovino", sez1: 1, sez2: 2, sez3: 0 },
+          { candidato: "Andrea Lauria", sez1: 0, sez2: 0, sez3: 3 },
+          { candidato: "Mario Lanzaro", sez1: 1, sez2: 2, sez3: 0 },
+          { candidato: "Lombardi Francesco", sez1: 2, sez2: 0, sez3: 3 }
+        ]
+      }
+    };
+
+    async function fetchCsv(url){
+      // Strategia: prova il fetch diretto con vari trick anti-CORS di Google
+      // Google /pub?output=csv supporta fetch diretto se si aggiunge il timestamp
+      const strategies = [
+        // 1. Fetch diretto con cache busting (funziona quando aperto da browser moderni)
+        async (u) => {
+          const sep = u.includes('?') ? '&' : '?';
+          const res = await fetch(u + sep + '_t=' + Date.now(), {
+            cache: 'no-store',
+            mode: 'cors',
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.text();
+        },
+        // 2. corsproxy.io (affidabile, gratuito)
+        async (u) => {
+          const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(u + '&_t=' + Date.now()), {cache:'no-store'});
+          if (!res.ok) throw new Error('proxy1 HTTP ' + res.status);
+          const t = await res.text();
+          if (t.trim().startsWith('<')) throw new Error('proxy1 returned HTML');
+          return t;
+        },
+        // 3. allorigins (backup)
+        async (u) => {
+          const res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(u + '&_t=' + Date.now()), {cache:'no-store'});
+          if (!res.ok) throw new Error('proxy2 HTTP ' + res.status);
+          const t = await res.text();
+          if (t.trim().startsWith('<')) throw new Error('proxy2 returned HTML');
+          return t;
+        },
+        // 4. thingproxy (ulteriore backup)
+        async (u) => {
+          const res = await fetch('https://thingproxy.freeboard.io/fetch/' + u, {cache:'no-store'});
+          if (!res.ok) throw new Error('proxy3 HTTP ' + res.status);
+          const t = await res.text();
+          if (t.trim().startsWith('<')) throw new Error('proxy3 returned HTML');
+          return t;
+        },
+      ];
+
+      const errors = [];
+      for (const strategy of strategies) {
+        try {
+          const result = await Promise.race([
+            strategy(url),
+            new Promise((_, rej) => setTimeout(() => rej(new Error('timeout 8s')), 8000))
+          ]);
+          return result;
+        } catch(e) {
+          errors.push(e.message);
+          // piccola pausa prima del prossimo tentativo
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }
+      throw new Error('Tutti i metodi falliti: ' + errors.join(' | '));
+    }
+    function parseCsv(text){
+      const rows=[]; let row=[], cur='', inQuotes=false;
+      for(let i=0;i<text.length;i++){
+        const ch=text[i], next=text[i+1];
+        if(ch === '"' && inQuotes && next === '"'){cur += '"'; i++; continue;}
+        if(ch === '"'){inQuotes=!inQuotes; continue;}
+        if(ch === ',' && !inQuotes){row.push(cur); cur=''; continue;}
+        if((ch === '\n' || ch === '\r') && !inQuotes){ if(ch==='\r' && next==='\n') i++; row.push(cur); rows.push(row); row=[]; cur=''; continue; }
+        cur += ch;
+      }
+      if(cur.length || row.length){row.push(cur); rows.push(row);}
+      const filtered = rows.filter(r => r.some(c => String(c).trim() !== ''));
+      const header = filtered[0] || [];
+      const body = filtered.slice(1);
+      return body.map(r => Object.fromEntries(header.map((h,i)=>[String(h).trim(), (r[i] ?? '').trim()])));
+    }
+    function num(v){ if(v===null || v===undefined || v==='') return 0; return Number(String(v).replace(/\./g,'').replace(',', '.')) || 0; }
+    async function loadData(){
+      if(CONFIG.mode === "apps_script"){
+        try{
+          const res = await fetch(CONFIG.appsScriptUrl + (CONFIG.appsScriptUrl.includes('?') ? '&' : '?') + '_t=' + Date.now(), {
+            cache: 'no-store',
+            mode: 'cors'
+          });
+          if(!res.ok) throw new Error('Apps Script HTTP ' + res.status);
+          const payload = await res.json();
+
+          const summary = (payload.summary || []).map(r => ({
+            sezione:   String(r.sezione ?? r.Sezione ?? ''),
+            elettori:  num(r.elettori ?? r.Elettori),
+            cafarelli: num(r.cafarelli ?? r.Cafarelli ?? r.CAFarelli),
+            riccio:    num(r.riccio ?? r.Riccio),
+            barone:    num(r.barone ?? r.Barone),
+            bianche:   num(r.bianche ?? r.Bianche),
+            nulle:     num(r.nulle ?? r.Nulle)
+          }));
+
+          const preferences = (payload.preferences || []).map(r => ({
+            candidato: String(r.candidato ?? r.Candidato ?? ''),
+            sez1: num(r.sez1 ?? r['Sez. 1']),
+            sez2: num(r.sez2 ?? r['Sez. 2']),
+            sez3: num(r.sez3 ?? r['Sez. 3'])
+          }));
+
+          if(summary.length) return { summary, preferences };
+          throw new Error('Apps Script senza dati utili');
+        }catch(err){
+          console.warn('Apps Script fallito, provo fallback CSV:', err);
+          if(CONFIG.google?.summaryUrl && CONFIG.google?.preferencesUrl){
+            const [summaryCsv, prefsCsv] = await Promise.all([
+              fetchCsv(CONFIG.google.summaryUrl),
+              fetchCsv(CONFIG.google.preferencesUrl)
+            ]);
+            const summaryRaw = parseCsv(summaryCsv), prefsRaw = parseCsv(prefsCsv);
+
+            const summary = summaryRaw.map(r => ({
+              sezione: r.Sezione || r.Sez || r.sezione || r.sez || '',
+              elettori: num(r.Elettori || r.elettori),
+              cafarelli: num(r.CAFarelli || r.Cafarelli || r.cafarelli),
+              riccio: num(r.Riccio || r.riccio),
+              barone: num(r.Barone || r.barone),
+              bianche: num(r.Bianche || r.bianche),
+              nulle: num(r.Nulle || r.nulle)
+            })).filter(r => String(r.sezione).trim() !== '');
+
+            const preferences = prefsRaw.map(r => ({
+              candidato: r.Candidato || r.candidato || '',
+              sez1: num(r["Sez. 1"] || r.Sez1 || r.sez1),
+              sez2: num(r["Sez. 2"] || r.Sez2 || r.sez2),
+              sez3: num(r["Sez. 3"] || r.Sez3 || r.sez3)
+            })).filter(r => String(r.candidato).trim() !== '');
+
+            return { summary, preferences };
+          }
+          throw err;
+        }
+      }
+
+      if(CONFIG.mode === "google_csv"){
+        const [summaryCsv,prefsCsv] = await Promise.all([
+          fetchCsv(CONFIG.google.summaryUrl),
+          fetchCsv(CONFIG.google.preferencesUrl)
+        ]);
+        const summaryRaw = parseCsv(summaryCsv), prefsRaw = parseCsv(prefsCsv);
+        const summary = summaryRaw.map(r => ({
+          sezione: r.Sezione || r.Sez || r.sezione || r.sez || '',
+          elettori: num(r.Elettori || r.elettori),
+          cafarelli: num(r.CAFarelli || r.Cafarelli || r.cafarelli),
+          riccio: num(r.Riccio || r.riccio),
+          barone: num(r.Barone || r.barone),
+          bianche: num(r.Bianche || r.bianche),
+          nulle: num(r.Nulle || r.nulle)
+        })).filter(r => String(r.sezione).trim() !== '');
+
+        const preferences = prefsRaw.map(r => ({
+          candidato: r.Candidato || r.candidato || '',
+          sez1: num(r["Sez. 1"] || r.Sez1 || r.sez1),
+          sez2: num(r["Sez. 2"] || r.Sez2 || r.sez2),
+          sez3: num(r["Sez. 3"] || r.Sez3 || r.sez3)
+        })).filter(r => String(r.candidato).trim() !== '');
+
+        return { summary, preferences };
+      }
+
+      return JSON.parse(JSON.stringify(CONFIG.embedded));
+    }
+    function formatNum(n){ return new Intl.NumberFormat('it-IT').format(n); }
+    function formatPct(n){ return new Intl.NumberFormat('it-IT',{style:'percent',minimumFractionDigits:2,maximumFractionDigits:2}).format(n); }
+    function enrich(data){
+      const summary = data.summary.map(r => ({
+        ...r,
+        bianche: r.bianche || 0,
+        nulle: r.nulle || 0,
+        nonValide: (r.bianche || 0) + (r.nulle || 0),
+        scrutinati:r.cafarelli+r.riccio+r.barone+(r.bianche||0)+(r.nulle||0),
+        mancanti:r.elettori-(r.cafarelli+r.riccio+r.barone+(r.bianche||0)+(r.nulle||0))
+      }));
+      const totals = summary.reduce((a,r)=>({
+        elettori:a.elettori+r.elettori,
+        cafarelli:a.cafarelli+r.cafarelli,
+        riccio:a.riccio+r.riccio,
+        barone:a.barone+r.barone,
+        bianche:a.bianche+r.bianche,
+        nulle:a.nulle+r.nulle,
+        nonValide:a.nonValide+r.nonValide,
+        scrutinati:a.scrutinati+r.scrutinati,
+        mancanti:a.mancanti+r.mancanti
+      }), {elettori:0,cafarelli:0,riccio:0,barone:0,bianche:0,nulle:0,nonValide:0,scrutinati:0,mancanti:0});
+      const leaderboard = [
+        { name:'Barone', votes: totals.barone, colorClass:'barone' },
+        { name:'Riccio', votes: totals.riccio, colorClass:'riccio' },
+        { name:'Cafarelli', votes: totals.cafarelli, colorClass:'cafarelli' }
+      ].sort((a,b)=>b.votes-a.votes).map((x,i)=>({...x,rank:i+1,pctScrutinati:totals.scrutinati?x.votes/totals.scrutinati:0,pctElettori:totals.elettori?x.votes/totals.elettori:0}));
+      const preferences = data.preferences.map(r => ({...r, totale:r.sez1+r.sez2+r.sez3}));
+      return {summary, totals, leaderboard, preferences};
+    }
+    function renderLeaders(vm){
+      const box=document.getElementById('leaders'); box.innerHTML='';
+      const cls=['first','second','third'];
+      vm.leaderboard.forEach((l,idx)=>{
+        const gap = idx===0 ? (vm.leaderboard[0].votes-vm.leaderboard[1].votes) : (vm.leaderboard[idx-1].votes-l.votes);
+        const div=document.createElement('div'); div.className=`leader ${cls[idx]}`;
+        div.innerHTML=`<div><div class="rank">${idx+1}° posto</div><div class="leader-name ${l.colorClass}">${l.name.toUpperCase()}</div></div>
+        <div>
+          <div class="leader-votes">${formatNum(l.votes)}</div>
+          <div class="leader-meta"><span>Su scrutinati: <strong>${formatPct(l.pctScrutinati)}</strong></span><span>Su elettori: <strong>${formatPct(l.pctElettori)}</strong></span></div>
+          <div class="leader-meta" style="margin-top:8px;"><span>${idx===0?`+${formatNum(gap)} sul 2°`:`-${formatNum(gap)} dal ${idx}°`}</span><span></span></div>
+        </div>`;
+        box.appendChild(div);
+      });
+    }
+    function renderKpis(vm){
+      document.getElementById('scrutinatiVal').textContent=formatNum(vm.totals.scrutinati);
+      document.getElementById('elettoriVal').textContent=formatNum(vm.totals.elettori);
+      document.getElementById('mancanoVal').textContent=formatNum(vm.totals.mancanti);
+      document.getElementById('biancheVal').textContent=formatNum(vm.totals.bianche);
+      document.getElementById('nulleVal').textContent=formatNum(vm.totals.nulle);
+      document.getElementById('nonValideVal').textContent=formatNum(vm.totals.nonValide);
+      const pct = vm.totals.elettori ? vm.totals.scrutinati / vm.totals.elettori : 0;
+      const gap = vm.leaderboard[0].votes-vm.leaderboard[1].votes;
+      document.getElementById('progressBig').textContent=formatPct(pct);
+      document.getElementById('progressSide').textContent=`${formatNum(vm.totals.scrutinati)} scrutinati / ${formatNum(vm.totals.elettori)} elettori · gap 1°/2°: ${formatNum(gap)}`;
+      document.getElementById('progressFill').style.width=`${pct*100}%`;
+    }
+    function renderSections(vm){
+      const cards=document.getElementById('sectionCards'); cards.innerHTML='';
+      vm.summary.forEach(r=>{
+        const sorted=[{name:'Barone',votes:r.barone},{name:'Riccio',votes:r.riccio},{name:'Cafarelli',votes:r.cafarelli}].sort((a,b)=>b.votes-a.votes);
+        const pct = r.elettori ? r.scrutinati / r.elettori : 0;
+        const div=document.createElement('div'); div.className='mini-card';
+        div.innerHTML=`<h3>Sezione ${r.sezione}</h3><div class="big">${formatNum(r.scrutinati)} / ${formatNum(r.elettori)}</div><div class="sub" style="margin:6px 0 8px;">${formatPct(pct)} scrutinata</div><div class="sub">Leader: <strong>${sorted[0].name}</strong> (${formatNum(sorted[0].votes)})</div><div class="sub">Bianche: <strong>${formatNum(r.bianche)}</strong> · Nulle: <strong>${formatNum(r.nulle)}</strong></div><div class="sub">Mancano: <strong>${formatNum(r.mancanti)}</strong></div>`;
+        cards.appendChild(div);
+      });
+      const tbl=document.getElementById('sectionsTable');
+      tbl.innerHTML=`<thead><tr><th>Sezione</th><th>Elettori</th><th class="cafe">Cafarelli</th><th class="riccio">Riccio</th><th class="barone">Barone</th><th>Bianche</th><th>Nulle</th><th>Non valide</th><th>Scrutinati</th><th>Mancano</th><th>% scrutinio</th></tr></thead><tbody>
+      ${vm.summary.map(r=>`<tr><td>Sez. ${r.sezione}</td><td>${formatNum(r.elettori)}</td><td>${formatNum(r.cafarelli)}</td><td>${formatNum(r.riccio)}</td><td>${formatNum(r.barone)}</td><td>${formatNum(r.bianche)}</td><td>${formatNum(r.nulle)}</td><td>${formatNum(r.nonValide)}</td><td>${formatNum(r.scrutinati)}</td><td>${formatNum(r.mancanti)}</td><td>${formatPct(r.elettori?r.scrutinati/r.elettori:0)}</td></tr>`).join('')}
+      <tr><td><strong>Totale</strong></td><td><strong>${formatNum(vm.totals.elettori)}</strong></td><td><strong>${formatNum(vm.totals.cafarelli)}</strong></td><td><strong>${formatNum(vm.totals.riccio)}</strong></td><td><strong>${formatNum(vm.totals.barone)}</strong></td><td><strong>${formatNum(vm.totals.bianche)}</strong></td><td><strong>${formatNum(vm.totals.nulle)}</strong></td><td><strong>${formatNum(vm.totals.nonValide)}</strong></td><td><strong>${formatNum(vm.totals.scrutinati)}</strong></td><td><strong>${formatNum(vm.totals.mancanti)}</strong></td><td><strong>${formatPct(vm.totals.elettori?vm.totals.scrutinati/vm.totals.elettori:0)}</strong></td></tr></tbody>`;
+    }
+    function renderVoteBars(vm){
+      const box=document.getElementById('councillorBars');
+      if(!box) return;
+      const rows = [...vm.preferences].sort((a,b)=>b.totale-a.totale);
+      const max=Math.max(...rows.map(r=>r.totale),1);
+      box.innerHTML=rows.map(r=>`<div class="row"><div class="label">${r.candidato}</div><div class="count">${formatNum(r.totale)}</div><div class="track"><div class="fill barone" style="width:${(r.totale/max)*100}%"></div></div><div class="pct">S1 ${r.sez1||0} · S2 ${r.sez2||0} · S3 ${r.sez3||0}</div></div>`).join('');
+    }
+    function renderPrefs(vm){
+      const tbl=document.getElementById('prefsTable');
+      tbl.innerHTML=`<thead><tr><th>Candidato</th><th>Sez. 1</th><th>Sez. 2</th><th>Sez. 3</th><th>Totale</th></tr></thead><tbody>
+      ${vm.preferences.map(r=>`<tr><td>${r.candidato}</td><td>${r.sez1||''}</td><td>${r.sez2||''}</td><td>${r.sez3||''}</td><td><strong>${r.totale||0}</strong></td></tr>`).join('')}</tbody>`;
+    }
+    let consecutiveErrors = 0;
+    async function refresh(){
+      const pill = document.getElementById('statusPill');
+      const upd  = document.getElementById('lastUpdatePill');
+      pill.textContent = '🔄 Aggiornamento...';
+      pill.style.color = 'var(--muted)';
+      try{
+        const data = await loadData();
+        const vm   = enrich(data);
+        renderLeaders(vm); renderKpis(vm); renderSections(vm); renderVoteBars(vm); renderPrefs(vm);
+        consecutiveErrors = 0;
+        if(CONFIG.mode === 'apps_script'){
+          pill.textContent = '✅ Live – Apps Script / Google Sheet';
+        }else if(CONFIG.mode === 'google_csv'){
+          pill.textContent = '✅ Live – Google Sheet CSV';
+        }else{
+          pill.textContent = '📋 Demo locale';
+        }
+        pill.style.color  = 'var(--ok)';
+        upd.textContent   = 'Aggiornato alle ' + new Date().toLocaleTimeString('it-IT');
+      } catch(err){
+        consecutiveErrors++;
+        console.error('Refresh #' + consecutiveErrors + ':', err);
+        pill.textContent = consecutiveErrors >= 3 ? '🔴 Connessione assente' : '⚠️ Errore aggiornamento';
+        pill.style.color = consecutiveErrors >= 3 ? 'var(--bad)' : 'var(--warn)';
+        upd.textContent  = (err && err.message) ? err.message : String(err);
+      }
+    }
+    document.getElementById('refreshBtn').addEventListener('click', refresh);
+    refresh(); setInterval(refresh, CONFIG.refreshMs);
+  </script>
+</body>
+</html>
