@@ -7,7 +7,7 @@
   <style>
     :root{
       --bg:#0b0f14;--panel:#121922;--panel-2:#17202b;--text:#ecf2f8;--muted:#9fb0c2;--border:#263445;
-      --gold:#f5c451;--silver:#c7d0da;--bronze:#d7975f;--green:#77c255;--red:#d33838;--orange:#f0b429;--ok:#77c255;--warn:#f0b429;--bad:#ff6b6b;
+      --gold:#f5c451;--silver:#c7d0da;--bronze:#d7975f;--green:#77c255;--red:#d33838;--orange:#f0b429;
       --shadow:0 10px 30px rgba(0,0,0,.25);--radius:16px;
     }
     *{box-sizing:border-box} body{margin:0;font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,#091017 0%,#0d131c 100%);color:var(--text);}
@@ -111,7 +111,7 @@
           1) pubblica due fogli del tuo Google Sheet come CSV<br>
           2) apri questo file e modifica solo le URL dentro <code>CONFIG.google.summaryUrl</code> e <code>CONFIG.google.preferencesUrl</code><br>
           3) imposta <code>mode: "google_csv"</code><br>
-          4) su GitHub Pages o hosting statico funziona meglio che in apertura locale<br>5) il pannello si aggiorna da solo ogni 15 secondi
+          4) il pannello si aggiorna da solo ogni 15 secondi
         </div>
       </section>
     </div>
@@ -121,14 +121,14 @@
       <section class="panel"><h2>Riepilogo consiglieri</h2><table id="prefsTable"></table></section>
     </div>
 
-    <div class="foot">HTML standalone – pronto per browser o hosting statico · modalità consigliata: GitHub Pages</div>
+    <div class="foot">HTML standalone – pronto per browser o hosting statico</div>
   </div>
 
   <script>
     const CONFIG = {
-      mode: "apps_script",
+      mode: "google_csv",
       refreshMs: 15000,
-      appsScriptUrl: "https://script.google.com/macros/s/AKfycbxWqLlsT-oF1xNyyyqCrNyGXb_Xs21UYYVbg9PMfUeBSjKTAMt8TFgGP605YVdFj9Zq/exec",
+      appsScriptUrl: "",
       google: { summaryUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0RWRLEHs6SLo3ndcOebYhV_1zdrB6EZfGh6mkv5S8nVVZcLH5kwy1kMy6gi1PepgbriZQNB73fcqA/pub?gid=340663944&single=true&output=csv", preferencesUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0RWRLEHs6SLo3ndcOebYhV_1zdrB6EZfGh6mkv5S8nVVZcLH5kwy1kMy6gi1PepgbriZQNB73fcqA/pub?gid=2001477784&single=true&output=csv" },
       embedded: {
         summary: [
@@ -228,91 +228,39 @@
     function num(v){ if(v===null || v===undefined || v==='') return 0; return Number(String(v).replace(/\./g,'').replace(',', '.')) || 0; }
     async function loadData(){
       if(CONFIG.mode === "apps_script"){
-        try{
-          const res = await fetch(CONFIG.appsScriptUrl + (CONFIG.appsScriptUrl.includes('?') ? '&' : '?') + '_t=' + Date.now(), {
-            cache: 'no-store',
-            mode: 'cors'
-          });
-          if(!res.ok) throw new Error('Apps Script HTTP ' + res.status);
-          const payload = await res.json();
-
-          const summary = (payload.summary || []).map(r => ({
-            sezione:   String(r.sezione ?? r.Sezione ?? ''),
-            elettori:  num(r.elettori ?? r.Elettori),
-            cafarelli: num(r.cafarelli ?? r.Cafarelli ?? r.CAFarelli),
-            riccio:    num(r.riccio ?? r.Riccio),
-            barone:    num(r.barone ?? r.Barone),
-            bianche:   num(r.bianche ?? r.Bianche),
-            nulle:     num(r.nulle ?? r.Nulle)
-          }));
-
-          const preferences = (payload.preferences || []).map(r => ({
-            candidato: String(r.candidato ?? r.Candidato ?? ''),
-            sez1: num(r.sez1 ?? r['Sez. 1']),
-            sez2: num(r.sez2 ?? r['Sez. 2']),
-            sez3: num(r.sez3 ?? r['Sez. 3'])
-          }));
-
-          if(summary.length) return { summary, preferences };
-          throw new Error('Apps Script senza dati utili');
-        }catch(err){
-          console.warn('Apps Script fallito, provo fallback CSV:', err);
-          if(CONFIG.google?.summaryUrl && CONFIG.google?.preferencesUrl){
-            const [summaryCsv, prefsCsv] = await Promise.all([
-              fetchCsv(CONFIG.google.summaryUrl),
-              fetchCsv(CONFIG.google.preferencesUrl)
-            ]);
-            const summaryRaw = parseCsv(summaryCsv), prefsRaw = parseCsv(prefsCsv);
-
-            const summary = summaryRaw.map(r => ({
-              sezione: r.Sezione || r.Sez || r.sezione || r.sez || '',
-              elettori: num(r.Elettori || r.elettori),
-              cafarelli: num(r.CAFarelli || r.Cafarelli || r.cafarelli),
-              riccio: num(r.Riccio || r.riccio),
-              barone: num(r.Barone || r.barone),
-              bianche: num(r.Bianche || r.bianche),
-              nulle: num(r.Nulle || r.nulle)
-            })).filter(r => String(r.sezione).trim() !== '');
-
-            const preferences = prefsRaw.map(r => ({
-              candidato: r.Candidato || r.candidato || '',
-              sez1: num(r["Sez. 1"] || r.Sez1 || r.sez1),
-              sez2: num(r["Sez. 2"] || r.Sez2 || r.sez2),
-              sez3: num(r["Sez. 3"] || r.Sez3 || r.sez3)
-            })).filter(r => String(r.candidato).trim() !== '');
-
-            return { summary, preferences };
-          }
-          throw err;
-        }
-      }
-
-      if(CONFIG.mode === "google_csv"){
-        const [summaryCsv,prefsCsv] = await Promise.all([
-          fetchCsv(CONFIG.google.summaryUrl),
-          fetchCsv(CONFIG.google.preferencesUrl)
+        const [summaryCsv, prefsCsv] = await Promise.all([
+          fetch(CONFIG.google.summaryUrl + '&_t=' + Date.now()).then(r => r.text()),
+          fetch(CONFIG.google.preferencesUrl + '&_t=' + Date.now()).then(r => r.text())
         ]);
-        const summaryRaw = parseCsv(summaryCsv), prefsRaw = parseCsv(prefsCsv);
-        const summary = summaryRaw.map(r => ({
-          sezione: r.Sezione || r.Sez || r.sezione || r.sez || '',
-          elettori: num(r.Elettori || r.elettori),
-          cafarelli: num(r.CAFarelli || r.Cafarelli || r.cafarelli),
-          riccio: num(r.Riccio || r.riccio),
-          barone: num(r.Barone || r.barone),
-          bianche: num(r.Bianche || r.bianche),
-          nulle: num(r.Nulle || r.nulle)
-        })).filter(r => String(r.sezione).trim() !== '');
-
-        const preferences = prefsRaw.map(r => ({
-          candidato: r.Candidato || r.candidato || '',
-          sez1: num(r["Sez. 1"] || r.Sez1 || r.sez1),
-          sez2: num(r["Sez. 2"] || r.Sez2 || r.sez2),
-          sez3: num(r["Sez. 3"] || r.Sez3 || r.sez3)
-        })).filter(r => String(r.candidato).trim() !== '');
-
+        const summaryRaw = parseCsv(summaryCsv);
+        const prefsRaw   = parseCsv(prefsCsv);
+        function num(v){ if(v===null||v===undefined||v==='') return 0; return Number(String(v).replace(/\./g,'').replace(',','.')) || 0; }
+        // Intestazioni summary: Sezione, Elettori, Cafarelli, Riccio, Barone, Bianche, Nulle, Non valide, Scrutinati, Mancano, % scrutinio
+        // Intestazioni preferences: Candidato, Sez. 1, Sez. 2, Sez. 3, Totale
+        const summary = summaryRaw
+          .filter(r => {
+            const sez = String(r.Sezione || '').trim();
+            return sez !== '' && sez.toLowerCase() !== 'totale';
+          })
+          .map(r => ({
+            sezione:   String(r.Sezione || ''),
+            elettori:  num(r.Elettori),
+            cafarelli: num(r.Cafarelli),
+            riccio:    num(r.Riccio),
+            barone:    num(r.Barone),
+            bianche:   num(r.Bianche),
+            nulle:     num(r.Nulle)
+          }));
+        const preferences = prefsRaw
+          .filter(r => String(r.Candidato || '').trim() !== '')
+          .map(r => ({
+            candidato: r.Candidato || '',
+            sez1: num(r['Sez. 1']),
+            sez2: num(r['Sez. 2']),
+            sez3: num(r['Sez. 3'])
+          }));
         return { summary, preferences };
       }
-
       return JSON.parse(JSON.stringify(CONFIG.embedded));
     }
     function formatNum(n){ return new Intl.NumberFormat('it-IT').format(n); }
@@ -404,27 +352,26 @@
       const pill = document.getElementById('statusPill');
       const upd  = document.getElementById('lastUpdatePill');
       pill.textContent = '🔄 Aggiornamento...';
-      pill.style.color = 'var(--muted)';
+      pill.style.color = '#9fb0c2';
       try{
         const data = await loadData();
         const vm   = enrich(data);
         renderLeaders(vm); renderKpis(vm); renderSections(vm); renderVoteBars(vm); renderPrefs(vm);
         consecutiveErrors = 0;
-        if(CONFIG.mode === 'apps_script'){
-          pill.textContent = '✅ Live – Apps Script / Google Sheet';
-        }else if(CONFIG.mode === 'google_csv'){
-          pill.textContent = '✅ Live – Google Sheet CSV';
-        }else{
-          pill.textContent = '📋 Demo locale';
-        }
-        pill.style.color  = 'var(--ok)';
+        pill.textContent  = (CONFIG.mode==='google_csv'||CONFIG.mode==='apps_script') ? '✅ Live – Google Sheet' : '📋 Demo locale';
+        pill.style.color  = '#77c255';
         upd.textContent   = 'Aggiornato alle ' + new Date().toLocaleTimeString('it-IT');
       } catch(err){
         consecutiveErrors++;
         console.error('Refresh #' + consecutiveErrors + ':', err);
-        pill.textContent = consecutiveErrors >= 3 ? '🔴 Connessione assente' : '⚠️ Errore aggiornamento';
-        pill.style.color = consecutiveErrors >= 3 ? 'var(--bad)' : 'var(--warn)';
-        upd.textContent  = (err && err.message) ? err.message : String(err);
+        pill.textContent = '⚠️ Errore (tentativo ' + consecutiveErrors + ')';
+        pill.style.color = '#f0b429';
+        upd.textContent  = err.message || String(err);
+        // Dopo 3 errori di fila mostra avviso più chiaro
+        if(consecutiveErrors >= 3){
+          pill.textContent = '🔴 Connessione assente';
+          pill.style.color = '#d33838';
+        }
       }
     }
     document.getElementById('refreshBtn').addEventListener('click', refresh);
