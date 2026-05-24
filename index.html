@@ -126,9 +126,8 @@
 
   <script>
     const CONFIG = {
-      mode: "apps_script",
+      mode: "google_csv",
       refreshMs: 15000,
-      appsScriptUrl: "https://script.google.com/macros/s/AKfycbxWqLlsT-oF1xNyyyqCrNyGXb_Xs21UYYVbg9PMfUeBSjKTAMt8TFgGP605YVdFj9Zq/exec",
       google: { summaryUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0RWRLEHs6SLo3ndcOebYhV_1zdrB6EZfGh6mkv5S8nVVZcLH5kwy1kMy6gi1PepgbriZQNB73fcqA/pub?gid=340663944&single=true&output=csv", preferencesUrl: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR0RWRLEHs6SLo3ndcOebYhV_1zdrB6EZfGh6mkv5S8nVVZcLH5kwy1kMy6gi1PepgbriZQNB73fcqA/pub?gid=2001477784&single=true&output=csv" },
       embedded: {
         summary: [
@@ -154,60 +153,9 @@
     };
 
     async function fetchCsv(url){
-      // Strategia: prova il fetch diretto con vari trick anti-CORS di Google
-      // Google /pub?output=csv supporta fetch diretto se si aggiunge il timestamp
-      const strategies = [
-        // 1. Fetch diretto con cache busting (funziona quando aperto da browser moderni)
-        async (u) => {
-          const sep = u.includes('?') ? '&' : '?';
-          const res = await fetch(u + sep + '_t=' + Date.now(), {
-            cache: 'no-store',
-            mode: 'cors',
-          });
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          return res.text();
-        },
-        // 2. corsproxy.io (affidabile, gratuito)
-        async (u) => {
-          const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(u + '&_t=' + Date.now()), {cache:'no-store'});
-          if (!res.ok) throw new Error('proxy1 HTTP ' + res.status);
-          const t = await res.text();
-          if (t.trim().startsWith('<')) throw new Error('proxy1 returned HTML');
-          return t;
-        },
-        // 3. allorigins (backup)
-        async (u) => {
-          const res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(u + '&_t=' + Date.now()), {cache:'no-store'});
-          if (!res.ok) throw new Error('proxy2 HTTP ' + res.status);
-          const t = await res.text();
-          if (t.trim().startsWith('<')) throw new Error('proxy2 returned HTML');
-          return t;
-        },
-        // 4. thingproxy (ulteriore backup)
-        async (u) => {
-          const res = await fetch('https://thingproxy.freeboard.io/fetch/' + u, {cache:'no-store'});
-          if (!res.ok) throw new Error('proxy3 HTTP ' + res.status);
-          const t = await res.text();
-          if (t.trim().startsWith('<')) throw new Error('proxy3 returned HTML');
-          return t;
-        },
-      ];
-
-      const errors = [];
-      for (const strategy of strategies) {
-        try {
-          const result = await Promise.race([
-            strategy(url),
-            new Promise((_, rej) => setTimeout(() => rej(new Error('timeout 8s')), 8000))
-          ]);
-          return result;
-        } catch(e) {
-          errors.push(e.message);
-          // piccola pausa prima del prossimo tentativo
-          await new Promise(r => setTimeout(r, 300));
-        }
-      }
-      throw new Error('Tutti i metodi falliti: ' + errors.join(' | '));
+      const res = await fetch(url, {cache: "no-store"});
+      if(!res.ok) throw new Error("Impossibile leggere il CSV");
+      return await res.text();
     }
     function parseCsv(text){
       const rows=[]; let row=[], cur='', inQuotes=false;
@@ -227,38 +175,24 @@
     }
     function num(v){ if(v===null || v===undefined || v==='') return 0; return Number(String(v).replace(/\./g,'').replace(',', '.')) || 0; }
     async function loadData(){
-      if(CONFIG.mode === "apps_script"){
-        const [summaryCsv, prefsCsv] = await Promise.all([
-          fetch(CONFIG.google.summaryUrl + '&_t=' + Date.now()).then(r => r.text()),
-          fetch(CONFIG.google.preferencesUrl + '&_t=' + Date.now()).then(r => r.text())
-        ]);
-        const summaryRaw = parseCsv(summaryCsv);
-        const prefsRaw   = parseCsv(prefsCsv);
-        function num(v){ if(v===null||v===undefined||v==='') return 0; return Number(String(v).replace(/\./g,'').replace(',','.')) || 0; }
-        // Intestazioni summary: Sezione, Elettori, Cafarelli, Riccio, Barone, Bianche, Nulle, Non valide, Scrutinati, Mancano, % scrutinio
-        // Intestazioni preferences: Candidato, Sez. 1, Sez. 2, Sez. 3, Totale
-        const summary = summaryRaw
-          .filter(r => {
-            const sez = String(r.Sezione || '').trim();
-            return sez !== '' && sez.toLowerCase() !== 'totale';
-          })
-          .map(r => ({
-            sezione:   String(r.Sezione || ''),
-            elettori:  num(r.Elettori),
-            cafarelli: num(r.Cafarelli),
-            riccio:    num(r.Riccio),
-            barone:    num(r.Barone),
-            bianche:   num(r.Bianche),
-            nulle:     num(r.Nulle)
-          }));
-        const preferences = prefsRaw
-          .filter(r => String(r.Candidato || '').trim() !== '')
-          .map(r => ({
-            candidato: r.Candidato || '',
-            sez1: num(r['Sez. 1']),
-            sez2: num(r['Sez. 2']),
-            sez3: num(r['Sez. 3'])
-          }));
+      if(CONFIG.mode === "google_csv"){
+        const [summaryCsv,prefsCsv] = await Promise.all([fetchCsv(CONFIG.google.summaryUrl), fetchCsv(CONFIG.google.preferencesUrl)]);
+        const summaryRaw = parseCsv(summaryCsv), prefsRaw = parseCsv(prefsCsv);
+        const summary = summaryRaw.map(r => ({
+          sezione: r.Sezione || r.Sez || r.sezione || r.sez || '',
+          elettori: num(r.Elettori || r.elettori),
+          cafarelli: num(r.CAFarelli || r.Cafarelli || r.cafarelli),
+          riccio: num(r.Riccio || r.riccio),
+          barone: num(r.Barone || r.barone),
+          bianche: num(r.Bianche || r.bianche),
+          nulle: num(r.Nulle || r.nulle)
+        }));
+        const preferences = prefsRaw.map(r => ({
+          candidato: r.Candidato || r.candidato || '',
+          sez1: num(r["Sez. 1"] || r.Sez1 || r.sez1),
+          sez2: num(r["Sez. 2"] || r.Sez2 || r.sez2),
+          sez3: num(r["Sez. 3"] || r.Sez3 || r.sez3)
+        }));
         return { summary, preferences };
       }
       return JSON.parse(JSON.stringify(CONFIG.embedded));
@@ -347,31 +281,16 @@
       tbl.innerHTML=`<thead><tr><th>Candidato</th><th>Sez. 1</th><th>Sez. 2</th><th>Sez. 3</th><th>Totale</th></tr></thead><tbody>
       ${vm.preferences.map(r=>`<tr><td>${r.candidato}</td><td>${r.sez1||''}</td><td>${r.sez2||''}</td><td>${r.sez3||''}</td><td><strong>${r.totale||0}</strong></td></tr>`).join('')}</tbody>`;
     }
-    let consecutiveErrors = 0;
     async function refresh(){
-      const pill = document.getElementById('statusPill');
-      const upd  = document.getElementById('lastUpdatePill');
-      pill.textContent = '🔄 Aggiornamento...';
-      pill.style.color = '#9fb0c2';
       try{
-        const data = await loadData();
-        const vm   = enrich(data);
+        document.getElementById('statusPill').textContent = CONFIG.mode==='google_csv' ? 'Sorgente: Google Sheet CSV' : 'Sorgente: demo locale';
+        const data=await loadData(), vm=enrich(data);
         renderLeaders(vm); renderKpis(vm); renderSections(vm); renderVoteBars(vm); renderPrefs(vm);
-        consecutiveErrors = 0;
-        pill.textContent  = (CONFIG.mode==='google_csv'||CONFIG.mode==='apps_script') ? '✅ Live – Google Sheet' : '📋 Demo locale';
-        pill.style.color  = '#77c255';
-        upd.textContent   = 'Aggiornato alle ' + new Date().toLocaleTimeString('it-IT');
-      } catch(err){
-        consecutiveErrors++;
-        console.error('Refresh #' + consecutiveErrors + ':', err);
-        pill.textContent = '⚠️ Errore (tentativo ' + consecutiveErrors + ')';
-        pill.style.color = '#f0b429';
-        upd.textContent  = err.message || String(err);
-        // Dopo 3 errori di fila mostra avviso più chiaro
-        if(consecutiveErrors >= 3){
-          pill.textContent = '🔴 Connessione assente';
-          pill.style.color = '#d33838';
-        }
+        document.getElementById('lastUpdatePill').textContent='Ultimo aggiornamento: '+new Date().toLocaleTimeString('it-IT');
+      }catch(err){
+        console.error(err);
+        document.getElementById('statusPill').textContent='Errore caricamento dati';
+        document.getElementById('lastUpdatePill').textContent=String(err.message || err);
       }
     }
     document.getElementById('refreshBtn').addEventListener('click', refresh);
